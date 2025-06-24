@@ -1,0 +1,71 @@
+# === Node (frontend) ===
+node_modules/
+dist/
+build/
+.cache/
+.vite/
+.vscode/
+
+# local env or debug configs
+.env
+.env.*
+
+# logs and OS files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+
+# === Python (backend) ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.sqlite3
+*.db
+*.log
+
+# virtualenv
+.venv/
+venv/
+ENV/
+
+# mypy/pytest/pylint
+.mypy_cache/
+.pytest_cache/
+coverage/
+
+# === Unity (if used for frontend or audio visualizer) ===
+[Ll]ibrary/
+[Tt]emp/
+[Bb]uild/
+[Bb]uilds/
+obj/
+*.csproj
+*.unityproj
+*.sln
+*.user
+*.pidb
+*.booproj
+*.svd
+*.pdb
+
+# === Audio/Media Generated Files ===
+*.wav
+*.mp3
+*.ogg
+*.flac
+*.m4a
+*.webm
+
+# === MIDI/XML PDFs (if generated or user uploaded) ===
+*.mid
+*.midi
+*.xml
+*.musicxml
+*.pdf
+
+# === IDE Specific ===
+.idea/
+*.sublime*
+*.swp
