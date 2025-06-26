@@ -2,7 +2,7 @@ import { useFrame } from '@react-three/fiber'
 import { useRef } from 'react'
 import * as THREE from 'three'
 
-export function FallingNote({ startTime, lane, stringColor, duration }: {
+export default function FallingNote({ startTime, lane, stringColor, duration }: {
   startTime: number
   lane: number
   stringColor: string

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import './index.css'
 import type { Note, StringName } from './types'
 import { TEST_NOTES } from './testNotes'
+import StringPointDebugScene from './components/StringPointDebugScene'
 
 // === Visual constants ===
 const STRING_COLORS: Record<StringName, string> = {
@@ -40,7 +41,7 @@ function App() {
       // pause → record offset & stop RAF
       setIsRunning(false)
       pauseOffset.current = currentTime
-      if (rafId.current) cancelAnimationFrame(rafId.current)
+      if (rafId.current) cancelAnimationFrame(rafId.current!)
     } else {
       // start / resume
       startRef.current = null // reset; will be set in RAF
@@ -60,7 +61,7 @@ function App() {
     rafId.current = requestAnimationFrame(raf)
 
     return () => {
-      if (rafId.current) cancelAnimationFrame(rafId.current)
+      if (rafId.current) cancelAnimationFrame(rafId.current!)
     }
   }, [isRunning])
 
@@ -70,6 +71,13 @@ function App() {
       <button className="play-btn" onClick={togglePlay}>
         {isRunning ? 'Pause' : 'Play'}
       </button>
+
+      {/* <CelloScene 
+        currentTime={currentTime}
+        notes={TEST_NOTES}
+        stringColors={STRING_COLORS}
+      /> */}
+      <StringPointDebugScene />
 
       <div className="fingerboard" style={{ height: VIEWPORT_HEIGHT + 300 }}>
         {STRINGS.map((string, sIdx) => {
