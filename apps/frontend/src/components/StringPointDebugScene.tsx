@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import CelloModel from './CelloModel';
 import type { StringName, StringPoint, CelloMapping } from '../types';
-import { loadMapping, saveMapping, validateMapping } from '../utils/celloMapping';
+import { saveMapping, validateMapping, exportMappingToFile, importMappingFromFile } from '../utils/celloMapping';
 import React from 'react';
 
 const STRINGS: StringName[] = ['C', 'G', 'D', 'A'];
@@ -84,8 +84,8 @@ export default function StringPointDebugScene() {
   const [hSpacing, setHSpacing] = useState(loaded?.hSpacing ?? 0.3); // horizontal (between strings)
   const [vSpacing, setVSpacing] = useState(loaded?.vSpacing ?? 0.33); // vertical (between points)
   const [tiltDeg, setTiltDeg] = useState(loaded?.tiltDeg ?? 0); // degrees
-  const [copied, setCopied] = useState(false);
-  const [loadMessage, setLoadMessage] = useState('');
+  const [exportMessage, setExportMessage] = useState('');
+  const [importMessage, setImportMessage] = useState('');
 
   // Save to localStorage on any param change
   useEffect(() => {
@@ -124,76 +124,54 @@ export default function StringPointDebugScene() {
       version: '1.0'
     };
     
-    await navigator.clipboard.writeText(JSON.stringify(mapping, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    // Save to memory and export to file
+    saveMapping(mapping);
+    exportMappingToFile(mapping);
+    
+    setExportMessage('✅ Mapping exported to cello-mapping.json');
+    setTimeout(() => setExportMessage(''), 3000);
   };
 
-  const handleLoad = async () => {
+  const handleImport = async () => {
     try {
-      const clipboardText = await navigator.clipboard.readText();
-      const mapping: CelloMapping = JSON.parse(clipboardText);
-      
-      // Validate the mapping data
-      if (!validateMapping(mapping)) {
-        setLoadMessage('Invalid mapping data: missing required fields');
-        setTimeout(() => setLoadMessage(''), 3000);
-        return;
+      const mapping = await importMappingFromFile();
+      if (mapping) {
+        // Apply the loaded mapping parameters
+        setCelloScale(mapping.celloScale ?? celloScale);
+        setCenterX(mapping.centerX ?? centerX);
+        setCenterY(mapping.centerY ?? centerY);
+        setCenterZ(mapping.centerZ ?? centerZ);
+        setHSpacing(mapping.hSpacing ?? hSpacing);
+        setVSpacing(mapping.vSpacing ?? vSpacing);
+        setTiltDeg(mapping.tiltDeg ?? tiltDeg);
+        
+        setImportMessage('✅ Mapping imported successfully!');
+        setTimeout(() => setImportMessage(''), 3000);
       }
-
-      // Apply the loaded mapping parameters
-      setCelloScale(mapping.celloScale ?? celloScale);
-      setCenterX(mapping.centerX ?? centerX);
-      setCenterY(mapping.centerY ?? centerY);
-      setCenterZ(mapping.centerZ ?? centerZ);
-      setHSpacing(mapping.hSpacing ?? hSpacing);
-      setVSpacing(mapping.vSpacing ?? vSpacing);
-      setTiltDeg(mapping.tiltDeg ?? tiltDeg);
-
-      // Save the mapping for permanent use
-      saveMapping(mapping);
-      
-      setLoadMessage('Mapping loaded and saved successfully!');
-      setTimeout(() => setLoadMessage(''), 3000);
     } catch (error) {
-      setLoadMessage('Failed to load mapping: ' + (error as Error).message);
-      setTimeout(() => setLoadMessage(''), 3000);
-    }
-  };
-
-  const handleLoadFromStorage = () => {
-    const storedMapping = loadMapping();
-    if (storedMapping) {
-      setCelloScale(storedMapping.celloScale ?? celloScale);
-      setCenterX(storedMapping.centerX ?? centerX);
-      setCenterY(storedMapping.centerY ?? centerY);
-      setCenterZ(storedMapping.centerZ ?? centerZ);
-      setHSpacing(storedMapping.hSpacing ?? hSpacing);
-      setVSpacing(storedMapping.vSpacing ?? vSpacing);
-      setTiltDeg(storedMapping.tiltDeg ?? tiltDeg);
-      
-      setLoadMessage('Mapping loaded from storage!');
-      setTimeout(() => setLoadMessage(''), 3000);
-    } else {
-      setLoadMessage('No mapping found in storage');
-      setTimeout(() => setLoadMessage(''), 3000);
+      setImportMessage('❌ Failed to import mapping');
+      setTimeout(() => setImportMessage(''), 3000);
     }
   };
 
   return (
     <div>
-      <div style={{ marginBottom: 8, display: 'flex', gap: 12, alignItems: 'center' }}>
-        <button onClick={handleExport} style={{ padding: '6px 16px', fontWeight: 600, fontSize: 15 }}>
-          Export Mapping
+      <div style={{ marginBottom: 8, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <button onClick={handleExport} style={{ padding: '6px 16px', fontWeight: 600, fontSize: 15, backgroundColor: '#28a745', color: 'white' }}>
+          Export to JSON
         </button>
-        <button onClick={handleLoad} style={{ padding: '6px 16px', fontWeight: 600, fontSize: 15 }}>
-          Load from Clipboard
+        <button onClick={handleImport} style={{ padding: '6px 16px', fontWeight: 600, fontSize: 15, backgroundColor: '#007bff', color: 'white' }}>
+          Import from JSON
         </button>
-        <button onClick={handleLoadFromStorage} style={{ padding: '6px 16px', fontWeight: 600, fontSize: 15 }}>
-          Load from Storage
-        </button>
-        {copied && <span style={{ color: 'green', marginLeft: 12 }}>Copied to clipboard!</span>}
-        {loadMessage && <span style={{ color: loadMessage.includes('Failed') ? 'red' : 'green', marginLeft: 12 }}>{loadMessage}</span>}
+        {exportMessage && <span style={{ color: 'green', marginLeft: 12 }}>{exportMessage}</span>}
+        {importMessage && <span style={{ color: importMessage.includes('✅') ? 'green' : 'red', marginLeft: 12 }}>{importMessage}</span>}
+      </div>
+      
+      <div style={{ marginBottom: 8, padding: '8px 12px', backgroundColor: '#f8f9fa', borderRadius: '4px', fontSize: '14px' }}>
+        <strong>Storage:</strong> JSON files only (no browser storage)<br/>
+        <strong>Export:</strong> Writes/overwrites cello-mapping.json<br/>
+        <strong>Import:</strong> Loads from selected JSON file<br/>
+        <strong>Current Scale:</strong> {celloScale}
       </div>
       <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 32, alignItems: 'center' }}>
         <label>

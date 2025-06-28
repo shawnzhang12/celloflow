@@ -5,6 +5,8 @@ import type { Note, StringName } from './types'
 import { TEST_NOTES } from './testNotes'
 import StringPointDebugScene from './components/StringPointDebugScene'
 import PermanentMappingScene from './components/PermanentMappingScene'
+import FingerboardMappingScene from './components/FingerboardMappingScene'
+import SheetMusicScene from './components/SheetMusicScene'
 
 // === Visual constants ===
 const STRING_COLORS: Record<StringName, string> = {
@@ -31,7 +33,7 @@ const getX = (bin: number) => FINGERBOARD_LEFT + bin * BIN_WIDTH
 function App() {
   const [currentTime, setCurrentTime] = useState(0)
   const [isRunning, setIsRunning] = useState(false)
-  const [activeScene, setActiveScene] = useState<'debug' | 'mapping'>('debug')
+  const [activeScene, setActiveScene] = useState<'debug' | 'mapping' | 'fingerboard' | 'sheet'>('debug')
 
   const startRef = useRef<number | null>(null)
   const pauseOffset = useRef<number>(0) // seconds elapsed when paused
@@ -70,7 +72,7 @@ function App() {
   return (
     <div className="visual-root">
       {/* Scene selector */}
-      <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
+      <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <button 
           onClick={() => setActiveScene('debug')}
           style={{ 
@@ -99,13 +101,45 @@ function App() {
         >
           Permanent Mapping Scene
         </button>
+        <button 
+          onClick={() => setActiveScene('fingerboard')}
+          style={{ 
+            padding: '8px 16px', 
+            fontWeight: 600, 
+            fontSize: 15,
+            backgroundColor: activeScene === 'fingerboard' ? '#007bff' : '#f8f9fa',
+            color: activeScene === 'fingerboard' ? 'white' : 'black',
+            border: '1px solid #dee2e6',
+            borderRadius: '4px'
+          }}
+        >
+          Fingerboard Mapping
+        </button>
+        <button 
+          onClick={() => setActiveScene('sheet')}
+          style={{ 
+            padding: '8px 16px', 
+            fontWeight: 600, 
+            fontSize: 15,
+            backgroundColor: activeScene === 'sheet' ? '#007bff' : '#f8f9fa',
+            color: activeScene === 'sheet' ? 'white' : 'black',
+            border: '1px solid #dee2e6',
+            borderRadius: '4px'
+          }}
+        >
+          Sheet Music
+        </button>
       </div>
 
       {/* Render active scene */}
       {activeScene === 'debug' ? (
         <StringPointDebugScene />
-      ) : (
+      ) : activeScene === 'mapping' ? (
         <PermanentMappingScene />
+      ) : activeScene === 'fingerboard' ? (
+        <FingerboardMappingScene />
+      ) : (
+        <SheetMusicScene />
       )}
 
       {/* Legacy 2D fingerboard (commented out) */}

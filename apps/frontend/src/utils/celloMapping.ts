@@ -1,21 +1,16 @@
 import type { StringName, StringPoint, CelloMapping, Note } from '../types';
 
-const MAPPING_STORAGE_KEY = 'celloMappingData';
+// Global variable to store the current mapping in memory
+let currentMapping: CelloMapping | null = null;
 
-// Load mapping from localStorage
+// Load mapping from memory (set by file import)
 export function loadMapping(): CelloMapping | null {
-  try {
-    const raw = localStorage.getItem(MAPPING_STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
+  return currentMapping;
 }
 
-// Save mapping to localStorage
+// Save mapping to memory (called by file import)
 export function saveMapping(mapping: CelloMapping) {
-  localStorage.setItem(MAPPING_STORAGE_KEY, JSON.stringify(mapping));
+  currentMapping = mapping;
 }
 
 // Rotate coordinates around X axis
@@ -35,14 +30,11 @@ export function getNotePosition(note: { string: StringName; bin: number }): { x:
   const point = mapping.points.find(p => p.string === note.string && p.index === note.bin);
   if (!point) return null;
 
-  // Apply the stored transformation parameters to get the final position
-  const tiltRad = (mapping.tiltDeg * Math.PI) / 180;
-  const { y: yT, z: zT } = rotateYandZ(point.y, point.z, tiltRad);
-  
+  // The points from export already have tilt applied, so return them directly
   return {
     x: point.x,
-    y: yT,
-    z: zT
+    y: point.y,
+    z: point.z
   };
 }
 
@@ -52,12 +44,13 @@ export function getStringPositions(string: StringName): { x: number; y: number; 
   if (!mapping || !mapping.points) return [];
 
   const stringPoints = mapping.points.filter(p => p.string === string);
-  const tiltRad = (mapping.tiltDeg * Math.PI) / 180;
   
-  return stringPoints.map(point => {
-    const { y: yT, z: zT } = rotateYandZ(point.y, point.z, tiltRad);
-    return { x: point.x, y: yT, z: zT };
-  });
+  // The points from export already have tilt applied, so return them directly
+  return stringPoints.map(point => ({
+    x: point.x,
+    y: point.y,
+    z: point.z
+  }));
 }
 
 // Get the cello scale from stored mapping
@@ -73,7 +66,7 @@ export function hasMapping(): boolean {
 
 // Clear the stored mapping
 export function clearMapping() {
-  localStorage.removeItem(MAPPING_STORAGE_KEY);
+  currentMapping = null;
 }
 
 // Validate a mapping object
@@ -90,4 +83,54 @@ export function validateMapping(mapping: any): mapping is CelloMapping {
     typeof mapping.vSpacing === 'number' &&
     typeof mapping.tiltDeg === 'number'
   );
+}
+
+// Export mapping to JSON file
+export function exportMappingToFile(mapping: CelloMapping) {
+  const dataStr = JSON.stringify(mapping, null, 2);
+  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+  
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(dataBlob);
+  link.download = 'cello-mapping.json';
+  link.click();
+  
+  URL.revokeObjectURL(link.href);
+}
+
+// Import mapping from JSON file
+export function importMappingFromFile(): Promise<CelloMapping | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) {
+        resolve(null);
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const mapping = JSON.parse(e.target?.result as string);
+          if (validateMapping(mapping)) {
+            saveMapping(mapping);
+            resolve(mapping);
+          } else {
+            alert('Invalid mapping file format!');
+            resolve(null);
+          }
+        } catch (error) {
+          alert('Error reading file: ' + error);
+          resolve(null);
+        }
+      };
+      reader.readAsText(file);
+    };
+    
+    input.click();
+  });
 } 
