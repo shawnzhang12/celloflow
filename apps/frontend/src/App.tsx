@@ -4,6 +4,7 @@ import './index.css'
 import type { Note, StringName } from './types'
 import { TEST_NOTES } from './testNotes'
 import StringPointDebugScene from './components/StringPointDebugScene'
+import PermanentMappingScene from './components/PermanentMappingScene'
 
 // === Visual constants ===
 const STRING_COLORS: Record<StringName, string> = {
@@ -30,6 +31,7 @@ const getX = (bin: number) => FINGERBOARD_LEFT + bin * BIN_WIDTH
 function App() {
   const [currentTime, setCurrentTime] = useState(0)
   const [isRunning, setIsRunning] = useState(false)
+  const [activeScene, setActiveScene] = useState<'debug' | 'mapping'>('debug')
 
   const startRef = useRef<number | null>(null)
   const pauseOffset = useRef<number>(0) // seconds elapsed when paused
@@ -67,19 +69,47 @@ function App() {
 
   return (
     <div className="visual-root">
-      {/* Play / Pause button */}
-      <button className="play-btn" onClick={togglePlay}>
-        {isRunning ? 'Pause' : 'Play'}
-      </button>
+      {/* Scene selector */}
+      <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
+        <button 
+          onClick={() => setActiveScene('debug')}
+          style={{ 
+            padding: '8px 16px', 
+            fontWeight: 600, 
+            fontSize: 15,
+            backgroundColor: activeScene === 'debug' ? '#007bff' : '#f8f9fa',
+            color: activeScene === 'debug' ? 'white' : 'black',
+            border: '1px solid #dee2e6',
+            borderRadius: '4px'
+          }}
+        >
+          Debug Scene
+        </button>
+        <button 
+          onClick={() => setActiveScene('mapping')}
+          style={{ 
+            padding: '8px 16px', 
+            fontWeight: 600, 
+            fontSize: 15,
+            backgroundColor: activeScene === 'mapping' ? '#007bff' : '#f8f9fa',
+            color: activeScene === 'mapping' ? 'white' : 'black',
+            border: '1px solid #dee2e6',
+            borderRadius: '4px'
+          }}
+        >
+          Permanent Mapping Scene
+        </button>
+      </div>
 
-      {/* <CelloScene 
-        currentTime={currentTime}
-        notes={TEST_NOTES}
-        stringColors={STRING_COLORS}
-      /> */}
-      <StringPointDebugScene />
+      {/* Render active scene */}
+      {activeScene === 'debug' ? (
+        <StringPointDebugScene />
+      ) : (
+        <PermanentMappingScene />
+      )}
 
-      <div className="fingerboard" style={{ height: VIEWPORT_HEIGHT + 300 }}>
+      {/* Legacy 2D fingerboard (commented out) */}
+      {/* <div className="fingerboard" style={{ height: VIEWPORT_HEIGHT + 300 }}>
         {STRINGS.map((string, sIdx) => {
           const y = 260 + sIdx * STRING_VERTICAL_SPACING
           const notesForString = TEST_NOTES.filter(n => n.string === string)
@@ -120,7 +150,7 @@ function App() {
             </div>
           )
         })}
-      </div>
+      </div> */}
     </div>
   )
 }

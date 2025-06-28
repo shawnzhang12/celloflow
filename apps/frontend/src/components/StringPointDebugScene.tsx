@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import CelloModel from './CelloModel';
-import type { StringName } from '../types';
+import type { StringName, StringPoint, CelloMapping } from '../types';
+import { loadMapping, saveMapping, validateMapping } from '../utils/celloMapping';
 import React from 'react';
 
 const STRINGS: StringName[] = ['C', 'G', 'D', 'A'];
@@ -38,6 +39,40 @@ function rotateYandZ(y: number, z: number, angleRad: number) {
   };
 }
 
+// Utility function to get permanent 3D position for any note
+export function getNotePosition(note: { string: StringName; bin: number }): { x: number; y: number; z: number } | null {
+  const mapping = loadMapping();
+  if (!mapping || !mapping.points) return null;
+
+  // Find the point that matches the note's string and bin
+  const point = mapping.points.find(p => p.string === note.string && p.index === note.bin);
+  if (!point) return null;
+
+  // Apply the stored transformation parameters to get the final position
+  const tiltRad = (mapping.tiltDeg * Math.PI) / 180;
+  const { y: yT, z: zT } = rotateYandZ(point.y, point.z, tiltRad);
+  
+  return {
+    x: point.x,
+    y: yT,
+    z: zT
+  };
+}
+
+// Utility function to get all available positions for a string
+export function getStringPositions(string: StringName): { x: number; y: number; z: number }[] {
+  const mapping = loadMapping();
+  if (!mapping || !mapping.points) return [];
+
+  const stringPoints = mapping.points.filter(p => p.string === string);
+  const tiltRad = (mapping.tiltDeg * Math.PI) / 180;
+  
+  return stringPoints.map(point => {
+    const { y: yT, z: zT } = rotateYandZ(point.y, point.z, tiltRad);
+    return { x: point.x, y: yT, z: zT };
+  });
+}
+
 export default function StringPointDebugScene() {
   // Load from localStorage or use defaults
   const loaded = loadParams();
@@ -50,6 +85,7 @@ export default function StringPointDebugScene() {
   const [vSpacing, setVSpacing] = useState(loaded?.vSpacing ?? 0.33); // vertical (between points)
   const [tiltDeg, setTiltDeg] = useState(loaded?.tiltDeg ?? 0); // degrees
   const [copied, setCopied] = useState(false);
+  const [loadMessage, setLoadMessage] = useState('');
 
   // Save to localStorage on any param change
   useEffect(() => {
@@ -76,19 +112,88 @@ export default function StringPointDebugScene() {
   });
 
   const handleExport = async () => {
-    const exportData = points.map(({ string, index, x, y, z }) => ({ string, index, x, y, z }));
-    await navigator.clipboard.writeText(JSON.stringify(exportData, null, 2));
+    const mapping: CelloMapping = {
+      points: points.map(({ string, index, x, y, z }) => ({ string, index, x, y, z })),
+      celloScale,
+      centerX,
+      centerY,
+      centerZ,
+      hSpacing,
+      vSpacing,
+      tiltDeg,
+      version: '1.0'
+    };
+    
+    await navigator.clipboard.writeText(JSON.stringify(mapping, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleLoad = async () => {
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+      const mapping: CelloMapping = JSON.parse(clipboardText);
+      
+      // Validate the mapping data
+      if (!validateMapping(mapping)) {
+        setLoadMessage('Invalid mapping data: missing required fields');
+        setTimeout(() => setLoadMessage(''), 3000);
+        return;
+      }
+
+      // Apply the loaded mapping parameters
+      setCelloScale(mapping.celloScale ?? celloScale);
+      setCenterX(mapping.centerX ?? centerX);
+      setCenterY(mapping.centerY ?? centerY);
+      setCenterZ(mapping.centerZ ?? centerZ);
+      setHSpacing(mapping.hSpacing ?? hSpacing);
+      setVSpacing(mapping.vSpacing ?? vSpacing);
+      setTiltDeg(mapping.tiltDeg ?? tiltDeg);
+
+      // Save the mapping for permanent use
+      saveMapping(mapping);
+      
+      setLoadMessage('Mapping loaded and saved successfully!');
+      setTimeout(() => setLoadMessage(''), 3000);
+    } catch (error) {
+      setLoadMessage('Failed to load mapping: ' + (error as Error).message);
+      setTimeout(() => setLoadMessage(''), 3000);
+    }
+  };
+
+  const handleLoadFromStorage = () => {
+    const storedMapping = loadMapping();
+    if (storedMapping) {
+      setCelloScale(storedMapping.celloScale ?? celloScale);
+      setCenterX(storedMapping.centerX ?? centerX);
+      setCenterY(storedMapping.centerY ?? centerY);
+      setCenterZ(storedMapping.centerZ ?? centerZ);
+      setHSpacing(storedMapping.hSpacing ?? hSpacing);
+      setVSpacing(storedMapping.vSpacing ?? vSpacing);
+      setTiltDeg(storedMapping.tiltDeg ?? tiltDeg);
+      
+      setLoadMessage('Mapping loaded from storage!');
+      setTimeout(() => setLoadMessage(''), 3000);
+    } else {
+      setLoadMessage('No mapping found in storage');
+      setTimeout(() => setLoadMessage(''), 3000);
+    }
+  };
+
   return (
     <div>
-      <div style={{ marginBottom: 8 }}>
+      <div style={{ marginBottom: 8, display: 'flex', gap: 12, alignItems: 'center' }}>
         <button onClick={handleExport} style={{ padding: '6px 16px', fontWeight: 600, fontSize: 15 }}>
-          Export Points
+          Export Mapping
+        </button>
+        <button onClick={handleLoad} style={{ padding: '6px 16px', fontWeight: 600, fontSize: 15 }}>
+          Load from Clipboard
+        </button>
+        <button onClick={handleLoadFromStorage} style={{ padding: '6px 16px', fontWeight: 600, fontSize: 15 }}>
+          Load from Storage
         </button>
         {copied && <span style={{ color: 'green', marginLeft: 12 }}>Copied to clipboard!</span>}
+        {loadMessage && <span style={{ color: loadMessage.includes('Failed') ? 'red' : 'green', marginLeft: 12 }}>{loadMessage}</span>}
       </div>
       <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 32, alignItems: 'center' }}>
         <label>
